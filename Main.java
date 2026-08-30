@@ -26,6 +26,9 @@ class AntivirusAlgoInJava {
 
                 try {
                     int targetLine = Integer.parseInt(line.substring(0, separator));
+                    if (targetLine <= 0) {
+                        throw new IOException("Target line must be positive at definition line " + definitionLine);
+                    }
                     signatures.put(targetLine, line.substring(separator + 1));
                 } catch (NumberFormatException exception) {
                     throw new IOException("Invalid line number at definition line " + definitionLine, exception);
