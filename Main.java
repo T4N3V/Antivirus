@@ -29,7 +29,10 @@ class AntivirusAlgoInJava {
                     if (targetLine <= 0) {
                         throw new IOException("Target line must be positive at definition line " + definitionLine);
                     }
-                    signatures.put(targetLine, line.substring(separator + 1));
+                    String previous = signatures.putIfAbsent(targetLine, line.substring(separator + 1));
+                    if (previous != null) {
+                        throw new IOException("Duplicate target line at definition line " + definitionLine);
+                    }
                 } catch (NumberFormatException exception) {
                     throw new IOException("Invalid line number at definition line " + definitionLine, exception);
                 }
