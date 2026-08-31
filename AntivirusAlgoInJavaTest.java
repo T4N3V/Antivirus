@@ -22,6 +22,7 @@ public class AntivirusAlgoInJavaTest {
 
             assertInvalidLineNumber(definitions, "0/alpha\n");
             assertInvalidLineNumber(definitions, "-1/alpha\n");
+            assertDuplicateTargetLine(definitions);
 
             Files.write(definitions, "1/alpha\n".getBytes("UTF-8"));
             scanner.readPattern(definitions.toString());
@@ -43,6 +44,18 @@ public class AntivirusAlgoInJavaTest {
             return;
         }
         throw new AssertionError("non-positive target line must be rejected: " + definition);
+    }
+
+    private static void assertDuplicateTargetLine(Path definitions) throws Exception {
+        Files.write(definitions, "1/alpha\n1/omega\n".getBytes("UTF-8"));
+        try {
+            new AntivirusAlgoInJava().readPattern(definitions.toString());
+        } catch (IOException expected) {
+            assertTrue(expected.getMessage().contains("definition line 2"),
+                    "duplicate target errors should identify the second definition");
+            return;
+        }
+        throw new AssertionError("duplicate target lines must be rejected");
     }
 
     private static void assertTrue(boolean condition, String message) {
