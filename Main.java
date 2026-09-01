@@ -29,7 +29,11 @@ class AntivirusAlgoInJava {
                     if (targetLine <= 0) {
                         throw new IOException("Target line must be positive at definition line " + definitionLine);
                     }
-                    String previous = signatures.putIfAbsent(targetLine, line.substring(separator + 1));
+                    String signature = line.substring(separator + 1);
+                    if (signature.isEmpty()) {
+                        throw new IOException("Signature must not be empty at definition line " + definitionLine);
+                    }
+                    String previous = signatures.putIfAbsent(targetLine, signature);
                     if (previous != null) {
                         throw new IOException("Duplicate target line at definition line " + definitionLine);
                     }
