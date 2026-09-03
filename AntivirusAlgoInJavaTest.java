@@ -19,6 +19,7 @@ public class AntivirusAlgoInJavaTest {
             assertTrue(scanner.containsVirus(infected.toString()), "all signatures should be detected");
             assertFalse(scanner.containsVirus(clean.toString()), "a missing signature should produce a clean result");
             assertTrue(scanner.containsVirus(infected.toString()), "repeated scans must not retain counters");
+            assertInvalidReloadKeepsPreviousPatterns(scanner, definitions, infected, clean);
 
             assertInvalidLineNumber(definitions, "0/alpha\n");
             assertInvalidLineNumber(definitions, "-1/alpha\n");
@@ -33,6 +34,21 @@ public class AntivirusAlgoInJavaTest {
             Files.deleteIfExists(infected);
             Files.deleteIfExists(clean);
         }
+    }
+
+    private static void assertInvalidReloadKeepsPreviousPatterns(
+            AntivirusAlgoInJava scanner, Path definitions, Path infected, Path clean) throws Exception {
+        Files.write(definitions, "1/alpha\ninvalid\n".getBytes("UTF-8"));
+        try {
+            scanner.readPattern(definitions.toString());
+        } catch (IOException expected) {
+            assertTrue(scanner.containsVirus(infected.toString()),
+                    "a failed reload must preserve the previous infected result");
+            assertFalse(scanner.containsVirus(clean.toString()),
+                    "a failed reload must not leave a partial signature set");
+            return;
+        }
+        throw new AssertionError("malformed replacement definitions must be rejected");
     }
 
     private static void assertInvalidLineNumber(Path definitions, String definition) throws Exception {
