@@ -12,7 +12,7 @@ class AntivirusAlgoInJava {
     private final Map<Integer, String> signatures = new HashMap<>();
 
     void readPattern(String filename) throws IOException {
-        signatures.clear();
+        Map<Integer, String> loadedSignatures = new HashMap<>();
 
         try (BufferedReader reader = Files.newBufferedReader(Paths.get(filename))) {
             String line;
@@ -33,7 +33,7 @@ class AntivirusAlgoInJava {
                     if (signature.isEmpty()) {
                         throw new IOException("Signature must not be empty at definition line " + definitionLine);
                     }
-                    String previous = signatures.putIfAbsent(targetLine, signature);
+                    String previous = loadedSignatures.putIfAbsent(targetLine, signature);
                     if (previous != null) {
                         throw new IOException("Duplicate target line at definition line " + definitionLine);
                     }
@@ -42,6 +42,9 @@ class AntivirusAlgoInJava {
                 }
             }
         }
+
+        signatures.clear();
+        signatures.putAll(loadedSignatures);
     }
 
     boolean containsVirus(String filename) throws IOException {
