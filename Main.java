@@ -1,74 +1,100 @@
 import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.Set;
-import javax.swing.*;
+import java.util.Map;
+import javax.swing.JOptionPane;
+import javax.swing.UIManager;
 
 class AntivirusAlgoInJava {
-    int count = 0;
-    int size = 0;
-    int occur = 0;
-    HashMap hashMap = new HashMap();
-    void readPattern(String filename) throws Exception {
-        try
-        {
-            FileReader in = new FileReader(filename);
-            BufferedReader br = new BufferedReader(in);
+    private final Map<Integer, String> signatures = new HashMap<>();
+
+    void readPattern(String filename) throws IOException {
+        Map<Integer, String> loadedSignatures = new HashMap<>();
+
+        try (BufferedReader reader = Files.newBufferedReader(Paths.get(filename))) {
             String line;
-            int i = 0;
-            while ((line = br.readLine()) != null) {
-                hashMap.put(line.substring(0, line.indexOf("/")), line.substring(line.indexOf("/") + 1, line.length()));
-                ++i;
-            }
-            size = i;
-            br.close();
-        }
-        catch(Exception e)
-        {
-            //System.out.println("Hello"+e);
-        }
-    }
-    void searchVirus(String file) throws Exception {
-        FileReader in = new FileReader(file);
-        BufferedReader br = new BufferedReader(in);
-        String line;
-        while ((line = br.readLine()) != null) {
-            Set keys = hashMap.keySet();
-            count++;
-            boolean containsKey = keys.contains(String.valueOf(count));
-            if (containsKey) {
-                String virus = (String) hashMap.get(String.valueOf(count));
-                if (line.indexOf(virus) > -1) {
-                    occur++;
+            int definitionLine = 0;
+            while ((line = reader.readLine()) != null) {
+                definitionLine++;
+                int separator = line.indexOf('/');
+                if (separator <= 0) {
+                    throw new IOException("Invalid definition at line " + definitionLine);
+                }
+
+                try {
+                    int targetLine = Integer.parseInt(line.substring(0, separator));
+                    if (targetLine <= 0) {
+                        throw new IOException("Target line must be positive at definition line " + definitionLine);
+                    }
+                    String signature = line.substring(separator + 1);
+                    if (signature.isEmpty()) {
+                        throw new IOException("Signature must not be empty at definition line " + definitionLine);
+                    }
+                    String previous = loadedSignatures.putIfAbsent(targetLine, signature);
+                    if (previous != null) {
+                        throw new IOException("Duplicate target line at definition line " + definitionLine);
+                    }
+                } catch (NumberFormatException exception) {
+                    throw new IOException("Invalid line number at definition line " + definitionLine, exception);
                 }
             }
         }
-        br.close();
-        if (size == occur) {
-            JOptionPane.showMessageDialog(null, "Error", "Virus Detected ", JOptionPane.ERROR_MESSAGE);
+
+        signatures.clear();
+        signatures.putAll(loadedSignatures);
+    }
+
+    boolean containsVirus(String filename) throws IOException {
+        int matchedSignatures = 0;
+        int currentLine = 0;
+
+        try (BufferedReader reader = Files.newBufferedReader(Paths.get(filename))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                currentLine++;
+                String signature = signatures.get(currentLine);
+                if (signature != null && line.contains(signature)) {
+                    matchedSignatures++;
+                }
+            }
         }
-        else{
+
+        return !signatures.isEmpty() && matchedSignatures == signatures.size();
+    }
+
+    void searchVirus(String filename) throws IOException {
+        if (containsVirus(filename)) {
+            JOptionPane.showMessageDialog(null, "Error", "Virus Detected ", JOptionPane.ERROR_MESSAGE);
+        } else {
             JOptionPane.showMessageDialog(null, "Clean File", "No Virus Found ", JOptionPane.INFORMATION_MESSAGE);
         }
     }
-    public static void main(String []nix) {
+
+    public static void main(String[] args) {
         try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-
+            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
                 if ("Nimbus".equals(info.getName())) {
-
                     UIManager.setLookAndFeel(info.getClassName());
                     break;
                 }
             }
-        } catch (Exception ex) {
+        } catch (Exception ignored) {
+            // The scanner can still run with the platform default look and feel.
         }
+
+        Path definitions = args.length > 0 ? Paths.get(args[0]) : Paths.get("Definitions.txt");
+        Path fileToScan = args.length > 1 ? Paths.get(args[1]) : Paths.get("Virus.txt");
+
         try {
-            AntivirusAlgoInJava fr = new AntivirusAlgoInJava();
-            fr.readPattern("C:\\Users\\og5\\IdeaProjects\\antivirus\\src\\definitions.txt");
-            fr.searchVirus("C:\\Users\\og5\\IdeaProjects\\antivirus\\src\\virus.txt");
-        } catch (Exception e) {
-            e.printStackTrace();
+            AntivirusAlgoInJava scanner = new AntivirusAlgoInJava();
+            scanner.readPattern(definitions.toString());
+            scanner.searchVirus(fileToScan.toString());
+        } catch (Exception exception) {
+            exception.printStackTrace();
+            JOptionPane.showMessageDialog(null, exception.getMessage(), "Scan failed", JOptionPane.ERROR_MESSAGE);
         }
     }
 }
